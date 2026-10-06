@@ -39,6 +39,8 @@ class PRStackApp {
     this.themeKey = "pr_stack_theme";
     this.prs = this.loadData();
     this.selectedPrId = this.prs.length > 0 ? this.prs[0].id : null;
+    this.searchQuery = "";
+    this.activeFilter = "all";
 
     this.initElements();
     this.initEventListeners();
@@ -87,6 +89,10 @@ class PRStackApp {
     this.closeCheatsheetBtn = document.getElementById("closeCheatsheetBtn");
     this.dismissCheatsheetBtn = document.getElementById("dismissCheatsheetBtn");
     this.copyCliBtn = document.getElementById("copyCliBtn");
+
+    // Search and filter elements
+    this.searchInput = document.getElementById("searchInput");
+    this.filterChips = document.getElementById("filterChips");
   }
 
   initEventListeners() {
@@ -102,6 +108,10 @@ class PRStackApp {
     this.resetDemoBtn.addEventListener("click", () => {
       this.prs = JSON.parse(JSON.stringify(defaultStack));
       this.selectedPrId = this.prs[0].id;
+      this.searchQuery = "";
+      this.activeFilter = "all";
+      if (this.searchInput) this.searchInput.value = "";
+      this.updateActiveChip();
       this.saveData();
       this.render();
     });
@@ -109,10 +119,40 @@ class PRStackApp {
     this.themeToggleBtn.addEventListener("click", () => this.toggleTheme());
     this.copyCliBtn.addEventListener("click", () => this.copyCommands());
 
+    // Search & Filter listeners
+    if (this.searchInput) {
+      this.searchInput.addEventListener("input", (e) => {
+        this.searchQuery = e.target.value.trim().toLowerCase();
+        this.render();
+      });
+    }
+
+    if (this.filterChips) {
+      this.filterChips.addEventListener("click", (e) => {
+        const chip = e.target.closest(".chip");
+        if (!chip) return;
+        this.activeFilter = chip.getAttribute("data-filter") || "all";
+        this.updateActiveChip();
+        this.render();
+      });
+    }
+
     // Close modal on click outside
     window.addEventListener("click", (e) => {
       if (e.target === this.prModal) this.closeAddModal();
       if (e.target === this.cheatsheetModal) this.closeCheatsheet();
+    });
+  }
+
+  updateActiveChip() {
+    if (!this.filterChips) return;
+    const chips = this.filterChips.querySelectorAll(".chip");
+    chips.forEach((c) => {
+      if (c.getAttribute("data-filter") === this.activeFilter) {
+        c.classList.add("is-active");
+      } else {
+        c.classList.remove("is-active");
+      }
     });
   }
 
@@ -312,39 +352,56 @@ git pull origin main`;
     `;
     this.stackContainer.appendChild(baseNode);
 
-    // Render PR layers
-    this.prs.forEach((pr, index) => {
-      const isSelected = pr.id === this.selectedPrId;
-      const card = document.createElement("div");
-      card.className = `stack-node ${isSelected ? "is-active" : ""}`;
-      card.addEventListener("click", () => this.selectPr(pr.id));
-
-      card.innerHTML = `
-        <div class="connector-line"></div>
-        <div class="node-left">
-          <div class="node-title-row">
-            <span class="node-title">#${pr.number || index + 1} ${pr.title}</span>
-            <span class="branch-tag">${pr.branch}</span>
-            ${this.getStatusBadge(pr.status)}
-          </div>
-          <div class="node-meta">
-            <span><strong>Base:</strong> <code>${pr.base}</code></span>
-            <span><strong>Reviewer:</strong> ${pr.reviewer}</span>
-            <span>${pr.description || "No description"}</span>
-          </div>
-        </div>
-        <div class="node-right">
-          <select class="btn btn-xs btn-outline" onchange="window.app.changeStatus('${pr.id}', this.value, event)">
-            <option value="in_progress" ${pr.status === "in_progress" ? "selected" : ""}>In Progress</option>
-            <option value="review_needed" ${pr.status === "review_needed" ? "selected" : ""}>Review Needed</option>
-            <option value="approved" ${pr.status === "approved" ? "selected" : ""}>Approved</option>
-            <option value="merged" ${pr.status === "merged" ? "selected" : ""}>Merged</option>
-          </select>
-          <button class="btn btn-xs btn-ghost" onclick="window.app.deletePr('${pr.id}', event)" title="Delete PR">✕</button>
-        </div>
-      `;
-      this.stackContainer.appendChild(card);
+    // Filter PR layers
+    const filteredPrs = this.prs.filter((pr) => {
+      const matchesFilter = this.activeFilter === "all" || pr.status === this.activeFilter;
+      const matchesSearch = !this.searchQuery ||
+        pr.branch.toLowerCase().includes(this.searchQuery) ||
+        pr.title.toLowerCase().includes(this.searchQuery) ||
+        (pr.description && pr.description.toLowerCase().includes(this.searchQuery)) ||
+        (pr.reviewer && pr.reviewer.toLowerCase().includes(this.searchQuery));
+      return matchesFilter && matchesSearch;
     });
+
+    if (filteredPrs.length === 0) {
+      const emptyNode = document.createElement("div");
+      emptyNode.className = "empty-state";
+      emptyNode.innerHTML = `<p>No pull requests match your search or filter.</p>`;
+      this.stackContainer.appendChild(emptyNode);
+    } else {
+      filteredPrs.forEach((pr, index) => {
+        const isSelected = pr.id === this.selectedPrId;
+        const card = document.createElement("div");
+        card.className = `stack-node ${isSelected ? "is-active" : ""}`;
+        card.addEventListener("click", () => this.selectPr(pr.id));
+
+        card.innerHTML = `
+          <div class="connector-line"></div>
+          <div class="node-left">
+            <div class="node-title-row">
+              <span class="node-title">#${pr.number || index + 1} ${pr.title}</span>
+              <span class="branch-tag">${pr.branch}</span>
+              ${this.getStatusBadge(pr.status)}
+            </div>
+            <div class="node-meta">
+              <span><strong>Base:</strong> <code>${pr.base}</code></span>
+              <span><strong>Reviewer:</strong> ${pr.reviewer}</span>
+              <span>${pr.description || "No description"}</span>
+            </div>
+          </div>
+          <div class="node-right">
+            <select class="btn btn-xs btn-outline" onchange="window.app.changeStatus('${pr.id}', this.value, event)">
+              <option value="in_progress" ${pr.status === "in_progress" ? "selected" : ""}>In Progress</option>
+              <option value="review_needed" ${pr.status === "review_needed" ? "selected" : ""}>Review Needed</option>
+              <option value="approved" ${pr.status === "approved" ? "selected" : ""}>Approved</option>
+              <option value="merged" ${pr.status === "merged" ? "selected" : ""}>Merged</option>
+            </select>
+            <button class="btn btn-xs btn-ghost" onclick="window.app.deletePr('${pr.id}', event)" title="Delete PR">✕</button>
+          </div>
+        `;
+        this.stackContainer.appendChild(card);
+      });
+    }
 
     // Render Terminal output
     const activePr = this.prs.find((p) => p.id === this.selectedPrId) || this.prs[0];

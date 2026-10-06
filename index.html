@@ -80,6 +80,23 @@
         </div>
       </div>
 
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search branch, title, or reviewer..." />
+        </div>
+        <div class="filter-chips" id="filterChips">
+          <button class="chip is-active" data-filter="all">All</button>
+          <button class="chip" data-filter="in_progress">In Progress</button>
+          <button class="chip" data-filter="review_needed">Needs Review</button>
+          <button class="chip" data-filter="approved">Approved</button>
+          <button class="chip" data-filter="merged">Merged</button>
+        </div>
+      </div>
+
       <div class="stack-tree" id="stackContainer">
         <!-- Generated dynamically via JS -->
       </div>
