@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PR Stack Navigator</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body data-theme="dark">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="18" r="3"></circle>
+          <circle cx="6" cy="6" r="3"></circle>
+          <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
+          <line x1="6" y1="9" x2="6" y2="21"></line>
+        </svg>
+        <span class="logo-title">StackFlow</span>
+        <span class="badge badge-accent">PR Stack Sandbox</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button id="themeToggleBtn" class="btn btn-icon" title="Toggle Light/Dark Theme">
+        <span class="theme-icon">🌙</span>
+      </button>
+      <button id="cliCheatsheetBtn" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
+        CLI Cheatsheet
+      </button>
+      <button id="newPrBtn" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add PR to Stack
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Active Stack Base</span>
+        <div class="stat-value text-accent"><code class="branch-pill">main</code></div>
+        <span class="stat-desc">Root target branch</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Stacked PRs</span>
+        <div class="stat-value" id="totalPrsCount">0</div>
+        <span class="stat-desc">Layered changes</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Ready for Review</span>
+        <div class="stat-value text-warning" id="readyReviewCount">0</div>
+        <span class="stat-desc">Awaiting approval</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Ready to Merge</span>
+        <div class="stat-value text-success" id="readyMergeCount">0</div>
+        <span class="stat-desc">Mergeable bottom-up</span>
+      </div>
+    </section>
+
+    <!-- Visual Stack Section -->
+    <section class="stack-section">
+      <div class="section-header">
+        <div>
+          <h2>Pull Request Stack Pipeline</h2>
+          <p class="section-subtitle">Visual hierarchy of stacked branches originating from <code>main</code></p>
+        </div>
+        <div class="stack-actions">
+          <button id="resetDemoBtn" class="btn btn-sm btn-ghost">Reset Demo Stack</button>
+        </div>
+      </div>
+
+      <div class="stack-tree" id="stackContainer">
+        <!-- Generated dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- Generated Commands Preview -->
+    <section class="terminal-section">
+      <div class="terminal-header">
+        <div class="terminal-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <span class="terminal-title">Generated Git &amp; GitHub CLI Commands</span>
+        <button id="copyCliBtn" class="btn btn-xs btn-outline">Copy Commands</button>
+      </div>
+      <div class="terminal-body">
+        <pre><code id="cliOutput"># Select or interact with a PR above to generate git/gh commands</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add PR Modal -->
+  <div class="modal-backdrop" id="prModal" style="display: none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add PR to Stack</h3>
+        <button class="modal-close" id="closeModalBtn">&times;</button>
+      </div>
+      <form id="prForm">
+        <div class="form-group">
+          <label for="branchName">Branch Name</label>
+          <input type="text" id="branchName" placeholder="e.g., feat/user-auth-core" required>
+          <small class="form-hint">Conventions: feat/..., fix/..., chore/..., refactor/...</small>
+        </div>
+
+        <div class="form-group">
+          <label for="baseBranch">Base (Parent Branch)</label>
+          <select id="baseBranch" required>
+            <option value="main">main (Default)</option>
+          </select>
+          <small class="form-hint">Stacked PRs branch sequentially or target main</small>
+        </div>
+
+        <div class="form-group">
+          <label for="prTitle">PR Title</label>
+          <input type="text" id="prTitle" placeholder="e.g., feat(auth): add JWT authentication service" required>
+        </div>
+
+        <div class="form-group">
+          <label for="prDescription">Description / Commit Scope</label>
+          <textarea id="prDescription" rows="3" placeholder="Brief atomic summary of this pull request..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="prStatus">Status</label>
+            <select id="prStatus">
+              <option value="in_progress">In Progress</option>
+              <option value="review_needed">Review Needed</option>
+              <option value="approved">Approved</option>
+              <option value="merged">Merged</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="prReviewer">Reviewer</label>
+            <input type="text" id="prReviewer" placeholder="@teammate">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancelModalBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save to Stack</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CLI Cheatsheet Modal -->
+  <div class="modal-backdrop" id="cheatsheetModal" style="display: none;">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3>GitHub CLI &amp; Stacked PR Cheatsheet</h3>
+        <button class="modal-close" id="closeCheatsheetBtn">&times;</button>
+      </div>
+      <div class="modal-content cheatsheet-content">
+        <h4>1. Authentication &amp; Setup</h4>
+        <pre><code># Check GitHub login status
+gh auth status
+
+# Login if needed
+gh auth login</code></pre>
+
+        <h4>2. Branching &amp; Atomic Work</h4>
+        <pre><code># Always branch from latest main
+git checkout main
+git pull origin main
+git checkout -b feat/your-feature-name
+
+# Make atomic commit
+git add .
+git commit -m "feat(scope): concise description"</code></pre>
+
+        <h4>3. Push Branch &amp; Create PR with gh</h4>
+        <pre><code># Push branch to remote
+git push -u origin feat/your-feature-name
+
+# Create pull request via gh CLI
+gh pr create --base main --head feat/your-feature-name --title "feat(scope): concise description" --body "Summary of changes"</code></pre>
+
+        <h4>4. Merging with Merge Commit (--no-ff)</h4>
+        <pre><code># Merge via PR with merge commit (no fast-forward)
+gh pr merge &lt;pr-number-or-branch&gt; --merge --delete-branch
+
+# Update local main
+git checkout main
+git pull origin main</code></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="dismissCheatsheetBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
